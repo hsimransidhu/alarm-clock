@@ -1,65 +1,84 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // Display current time
-    updateClock();
+'use strict';
 
-    // Update clock every second
-    setInterval(updateClock, 1000);
+import { onEvent, select, clearIntervalHandler } from "./utils.js";
+
+const alarmForm = select('alarmForm');
+const alarmStatus = select('alarmStatus');
+const Message = select('Message');
+const hourInput = select('hour');
+const minuteInput = select('minute');
+const clockElement = select('clock');
+
+let liveTimeInterval;
+
+onEvent('alarmForm', 'submit', function (event) {
+    event.preventDefault();
+    setAlarm();
 });
+
+onEvent('alarmForm', 'input', function () {
+    Message.textContent = '';
+    hourInput.style.border = '';
+    minuteInput.style.border = '';
+});
+
+startLiveTime();
+
+function startLiveTime() {
+    updateClock();
+    liveTimeInterval = setInterval(updateClock, 1000);
+}
 
 function updateClock() {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
-    const clockElement = document.getElementById('clock');
-    clockElement.textContent = `${hours}:${minutes}`;
+    const timeString = `${hours}:${minutes}`;
+    clockElement.textContent = timeString;
+
 }
 
 function setAlarm() {
-    const hourInput = document.getElementById('hour');
-    const minuteInput = document.getElementById('minute');
-    const alarmStatusElement = document.getElementById('alarmStatus');
-
-    // Validate inputs
+    clearIntervalHandler(liveTimeInterval);
     const hour = parseInt(hourInput.value, 10);
     const minute = parseInt(minuteInput.value, 10);
-
     if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-        // Invalid input
-        alert('Please enter a valid hour (0-23) and minute (0-59).');
+        Message.textContent = 'Please enter a valid hour (0-23) and minute (0-59).';
+        hourInput.style.border = '2px solid #ff4646';
+        minuteInput.style.border = '2px solid #ff4646';
+        return;
+    }
+    if (hourInput.value.trim() === '' || minuteInput.value.trim() === '') {
+        Message.textContent = 'Please enter both hour and minute.';
+        hourInput.style.border = '2px solid #ff4646';
+        minuteInput.style.border = '2px solid #ff4646';
         return;
     }
 
-    // Set alarm
-    const alarmTime = new Date();
-    alarmTime.setHours(hour);
-    alarmTime.setMinutes(minute);
-    alarmTime.setSeconds(0);
-
-    const now = new Date();
-
-    if (alarmTime <= now) {
-        // Alarm time is in the past
-        alert('Please enter a future time for the alarm.');
-        return;
-    }
-
-    // Display alarm status
-    alarmStatusElement.textContent = `Alarm set for ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-
-    // Set timeout to play alarm sound
-    const timeUntilAlarm = alarmTime - now;
+    Message.textContent = '';
+    hourInput.style.border = '';
+    minuteInput.style.border = '';
+    alarmStatus.textContent = `Alarm set for ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     setTimeout(() => {
-        playAlarm();
-        alarmStatusElement.textContent = 'Alarm!';
+        checkAndPlayAlarm(hour, minute);
+    }, 1000);
+}
 
-        // Reset alarm status after a few seconds
+function checkAndPlayAlarm(setHour, setMinute) {
+    const currentTime = new Date();
+    const currentHour = currentTime.getHours();
+    const currentMinute = currentTime.getMinutes();
+    if (currentHour === setHour && currentMinute === setMinute) {
+        playAlarm();
+        alarmStatus.textContent = 'Alarm!';
+    } else {
         setTimeout(() => {
-            alarmStatusElement.textContent = '';
-        }, 3000);
-    }, timeUntilAlarm);
+            checkAndPlayAlarm(setHour, setMinute);
+        }, 1000);
+    }
 }
 
 function playAlarm() {
-    // Play alarm sound (replace with your own sound)
-    alert('ALARM!');
+    const audio = new Audio('./assets/audio/alarm_sound.wav');
+    audio.play();
 }
